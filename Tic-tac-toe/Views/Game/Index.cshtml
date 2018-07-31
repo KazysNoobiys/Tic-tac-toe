@@ -1,0 +1,304 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+}
+<div class="row">
+    <h4 id="youTurn" class="text-center"></h4>
+</div>
+<div class="row">
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+
+@section scripts{
+    <script>
+        $(function () {
+
+            var gameHub = $.connection.gameHub;
+
+            var $gameCanvas = $("#gameCanvas");
+            $gameCanvas.attr({ "height": 300, "width": 800 });
+            var isArc = true;
+            var colorSymbol = "red";
+            var endGame = false;
+
+            var clickSector = function (nameSector) {
+
+                var posX = $gameCanvas.getLayer(nameSector).x;
+                var posy = $gameCanvas.getLayer(nameSector).y;
+
+                $gameCanvas.setLayer(nameSector, {
+                    intangible: true
+                });
+
+                var lSign = $gameCanvas.getLayer(nameSector + "Sign");
+                if (lSign === undefined) {
+                    if (isArc === true) {
+                        $gameCanvas.drawArc({
+                            layer: true,
+                            name: nameSector + "Sign",
+                            strokeStyle: colorSymbol,
+                            strokeWidth: 5,
+                            x: posX,
+                            y: posy,
+                            radius: 30
+                        });
+                    } else {
+                        $gameCanvas.drawPath({
+                            layer: true,
+                            name: nameSector + "Sign",
+                            strokeStyle: colorSymbol,
+                            strokeWidth: 4,
+                            p1: {
+                                type: "line",
+                                x1: posX - 30, y1: posy - 30,
+                                x2: posX + 30, y2: posy + 30
+                            },
+                            p2: {
+                                type: "line",
+                                x1: posX + 30, y1: posy - 30,
+                                x2: posX - 30, y2: posy + 30
+                            }
+                        });
+                    }
+                }
+
+                gameHub.server.nextTurn(nameSector.substring(1));
+            }
+            var updateSector = function (nameSector) {
+
+                var posX = $gameCanvas.getLayer(nameSector).x;
+                var posy = $gameCanvas.getLayer(nameSector).y;
+
+                $gameCanvas.setLayer(nameSector, {
+                    intangible: true
+                });
+
+                var lSign = $gameCanvas.getLayer(nameSector + "Sign");
+                if (lSign === undefined) {
+                    if (isArc === true) {
+                        $gameCanvas.drawArc({
+                            layer: true,
+                            name: nameSector + "Sign",
+                            strokeStyle: colorSymbol,
+                            strokeWidth: 5,
+                            x: posX,
+                            y: posy,
+                            radius: 30
+                        });
+                    } else {
+                        $gameCanvas.drawPath({
+                            layer: true,
+                            name: nameSector + "Sign",
+                            strokeStyle: colorSymbol,
+                            strokeWidth: 4,
+                            p1: {
+                                type: "line",
+                                x1: posX - 30, y1: posy - 30,
+                                x2: posX + 30, y2: posy + 30
+                            },
+                            p2: {
+                                type: "line",
+                                x1: posX + 30, y1: posy - 30,
+                                x2: posX - 30, y2: posy + 30
+                            }
+                        });
+                    }
+                }
+            }
+
+            var createSector = function (posX, posY, nameSector, isYourTurn) {
+                $gameCanvas.addLayer({
+                    type: "rectangle",
+                    name: nameSector,
+                    x: posX,
+                    y: posY,
+                    width: 96,
+                    height: 96,
+                    mouseover: function (layer) {
+                        if (isYourTurn === true && !endGame) {
+                            $(this).animateLayer(layer, {
+                                fillStyle: 'rgba(48, 217, 33, 0.2)'
+                            }, 200);
+                        }
+                    },
+                    mouseout: function (layer) {
+                        if (isYourTurn === true && !endGame) {
+                            $(this).animateLayer(layer, {
+                                fillStyle: '#fff'
+                            }, 200);
+                        }
+                    },
+                    click: function (layer) {
+                        if (isYourTurn && !endGame) {
+                            clickSector(layer.name);
+                        }
+                    }
+                }).drawLayer();
+            }
+            var drawGrid = function (isYourTurn, sectors) {
+                $gameCanvas.removeLayers();
+                $gameCanvas.drawPath({
+                    layer: true,
+                    name: "grid",
+                    strokeStyle: "black",
+                    strokeWidth: 4,
+                    p1: {
+                        type: "line",
+                        x1: 50,
+                        y1: 100,
+                        x2: 350,
+                        y2: 100
+                    },
+                    p2: {
+                        type: "line",
+                        x1: 50,
+                        y1: 200,
+                        x2: 350,
+                        y2: 200
+                    },
+                    p3: {
+                        type: "line",
+                        x1: 150,
+                        y1: 0,
+                        x2: 150,
+                        y2: 300
+                    },
+                    p4: {
+                        type: "line",
+                        x1: 250,
+                        y1: 0,
+                        x2: 250,
+                        y2: 300
+                    }
+                });
+                createSector(100, 50, "s0", isYourTurn);
+                createSector(200, 50, "s1", isYourTurn);
+                createSector(300, 50, "s2", isYourTurn);
+                createSector(100, 150, "s3", isYourTurn);
+                createSector(200, 150, "s4", isYourTurn);
+                createSector(300, 150, "s5", isYourTurn);
+                createSector(100, 250, "s6", isYourTurn);
+                createSector(200, 250, "s7", isYourTurn);
+                createSector(300, 250, "s8", isYourTurn);
+
+                $.each(sectors,
+                    function (key, data) {
+                        $.each(data,
+                            function (index, value) {
+                                isYourTurn = true;
+                                if (value === -1) {
+                                    isArc = true;
+                                    colorSymbol = "red";
+                                    updateSector("s" + (key * 3 + index));
+                                } else if (value === 1) {
+                                    isArc = false;
+                                    colorSymbol = "green";
+                                    updateSector("s" + (key * 3 + index));
+                                }
+                            });
+                    });
+            };
+
+            gameHub.client.itsYourTurn = function (yes, youP1) {
+                if (yes) {
+                    $("#youTurn").text("Твой ход! ");
+                } else {
+                    $("#youTurn").text("Ход соперника! ");
+                }
+                var $span = $("<span>");
+                if (youP1) {
+                    isArc = true;
+                    colorSymbol = "red";
+                    $span.text("ты красный").css("color", "red");
+                } else {
+                    isArc = false;
+                    colorSymbol = "green";
+                    $span.text("ты зелёный").css("color", "green");
+                }
+                $("#youTurn").append($span);
+            }
+
+            gameHub.client.updateGameInterface = function (turn, sectors) {
+
+                if (!endGame) {
+                    drawGrid(turn, sectors);
+                }
+            };
+
+            gameHub.client.redirectToHome = function () {
+                var target = "@Url.Action("Index","Home")";
+                location.replace(target);
+            };
+
+            var drawWinLine = function (winQuery) {
+                var startX1 = $gameCanvas.getLayer("s" + winQuery[0]).x;
+                var startY1 = $gameCanvas.getLayer("s" + winQuery[0]).y;
+                var endX2 = $gameCanvas.getLayer("s" + winQuery[2]).x;
+                var endY2 = $gameCanvas.getLayer("s" + winQuery[2]).y;
+
+                if (startX1 === endX2) {
+                    startY1 -= 40;
+                    endY2 += 40;
+                }
+                if (startY1 === endY2) {
+                    startX1 -= 80;
+                    endX2 += 80;
+                }
+                if (startX1 < endX2 && startY1 < endY2) {
+                    startX1 -= 30;
+                    startY1 -= 30;
+                    endX2 += 30;
+                    endY2 += 30;
+                }
+                if (startX1 > endX2 && startY1 < endY2) {
+                    startX1 += 30;
+                    startY1 -= 30;
+                    endX2 -= 30;
+                    endY2 += 30;
+                }
+
+                $gameCanvas.drawLine({
+                    layer: true,
+                    name: "line1",
+                    strokeStyle: '#000',
+                    strokeWidth: 10,
+                    x1: startX1, y1: startY1,
+                    x2: startX1, y2: startY1
+                });
+
+
+                $gameCanvas.animateLayer("line1", {
+                    x2: endX2, y2: endY2
+
+                });
+            }
+
+
+            gameHub.client.youWin = function (sectors, winQuery) {
+                endGame = true;
+                drawGrid(false, sectors);
+                $("#youTurn").empty();
+                $("#youTurn").text("Ты выиграл!");
+                drawWinLine(winQuery);
+            };
+
+            gameHub.client.youLose = function (sectors, winQuery) {
+                endGame = true;
+                drawGrid(false, sectors);
+                $("#youTurn").empty();
+                $("#youTurn").text("Ты проиграл!");
+                drawWinLine(winQuery);
+            };
+
+            $("#logOff").click(function () {
+                gameHub.server.exit();
+                $.connection.hub.stop();
+            });
+
+            $.connection.hub.start();
+
+        })
+    </script>
+}
+

@@ -1,0 +1,129 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="text-center">Приветствую Игрок!</h2>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-4">
+        <div id="listUsers" class="list-group"></div>
+    </div>
+</div>
+
+@section scripts{
+    <script>
+        $(function () {
+            var status = ["Free", "InGame"];
+            var conn = $.connection.connectHub;
+
+            var onClickList = function () {
+                var name = $(this).attr("data-name");
+                var status = $(this).find(":first-child").attr("data-status");
+                if (status === "Free")
+                    conn.server.invite(name);
+            }
+
+            conn.client.inGame = function () {
+                var target = "@Url.Action("Index","Game")";
+
+                location.replace(target);
+            }
+
+            var confirmDialog = function (message, title, invitingUser) {
+                $('<div></div>').appendTo('body')
+                    .html('<div><h6>' + message + '?</h6></div>')
+                    .dialog({
+                        modal: true, title: title, zIndex: 10000, autoOpen: true,
+                        width: 'auto', resizable: false,
+                        open: function () {
+                            var closeBtn = $('.ui-dialog-titlebar-close');
+                            closeBtn.append('<span class="ui-button-icon-primary ui-icon ui-icon-closethick"></span>');
+                        },
+                        buttons: {
+                            "Принять": function () {
+                                conn.server.newGame(invitingUser);
+                                $(this).dialog("close");
+                            },
+                            "Отказать": function () {
+                                conn.server.refuseInvite(invitingUser);
+                                $(this).dialog("close");
+                            }
+                        },
+                        close: function (event, ui) {
+                            var closeBtn = $('.ui-dialog-titlebar-close');
+                            closeBtn.html('');
+                            $(this).remove();
+                        }
+                    });
+            };
+            var refuseMessage = function (message, title) {
+                $('<div></div>').appendTo('body')
+                    .html('<div><h6>' + message + '</h6></div>')
+                    .dialog({
+                        modal: true, title: title, zIndex: 10000, autoOpen: true,
+                        width: 'auto', resizable: false,
+                        open: function () {
+                            var closeBtn = $('.ui-dialog-titlebar-close');
+                            closeBtn.append('<span class="ui-button-icon-primary ui-icon ui-icon-closethick"></span>');
+                        },
+                        buttons: {
+                            "Ок": function () {
+                                $(this).dialog("close");
+                            }
+                        },
+                        close: function (event, ui) {
+                            var closeBtn = $('.ui-dialog-titlebar-close');
+                            closeBtn.html('');
+                            $(this).remove();
+                        }
+                    });
+            };
+
+            conn.client.invite = function (invitingUser) {
+                confirmDialog("Тебя приглашает " + invitingUser, "Приглашение", invitingUser);
+            }
+            conn.client.refuseInvite = function (name) {
+                refuseMessage(name + " отказался от игры", "Отказ");
+            }
+
+            conn.client.updateConnections = function (otherUsers) {
+                $("#listUsers a").remove();
+                var $div = $("#listUsers");
+                if (otherUsers.length !== 0) {
+                    otherUsers.sort();
+                    $.each(otherUsers,
+                        function (index, value) {
+                            var $span = $("<span>").text(status[value.Status]).addClass("badge")
+                                .attr({ "data-status": status[value.Status] });
+                            var $a = $("<a>").addClass("list-group-item list-group-item-action").attr({ "href": "#", "data-name": value.Name }).text(value.Name);
+
+                            if (status[value.Status] === "Free") {
+                                $span.addClass("alert-success");
+                            } else if (status[value.Status] === "InGame") {
+                                $a.attr({ "disabled": "disabled" });
+                                $span.addClass("alert-danger");
+                            }
+
+                            $a.append($span);
+                            $div.append($a);
+                        });
+                }
+                $("#listUsers a").click(onClickList);
+            }
+
+            conn.client.userConnectionsChanged = function () {
+                conn.server.updateListUsers();
+            }
+
+            $("#logOff").click(function () {
+                $.connection.hub.stop();
+            });
+
+            $.connection.hub.start();
+
+        });
+
+    </script>
+}
